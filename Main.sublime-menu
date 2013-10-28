@@ -1,0 +1,16 @@
+[
+{
+    "caption": "Edit",
+    "id":"edit",
+    "children":
+    [
+        {"caption": "Comment",
+        "id":"comment",
+        "children":
+        [
+            {"command": "javadoc", "caption":"Generate Javadoc"}
+        ]
+    }
+    ]
+}
+]
