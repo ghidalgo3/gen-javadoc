@@ -8,36 +8,54 @@ class Javadoc(object):
     hasInputTypes = False
     inputTypes = []
     charactersAdded = 0
+    doNotGenerate = False
 
 
-    def __init__(self, indentationLevel, methodSignature):
-        self.indentationLevel = indentationLevel
+    def __init__(self, indentation_level=None, methodSignature=None):
+        if indentation_level is None:
+            indentation_level = []
+        self.indentationLevel = indentation_level
         self.inputTypes = []
-        self.parseMethodSignature(methodSignature)
-        
+        if methodSignature is None:
+            methodSignature = ''
+        else:
+            self.parseMethodSignature(methodSignature)
+
 
     #creates javadoc string and returns it
-    def createJavadocString(self):
-        indents = " " * 4 * self.indentationLevel
-        #output = indents + "/**" + "\n"
-        output = "/**" + "\n"
-        output = output + (indents + " *" + "\n")*2
-        #output = output + indents + " *" + "\n"
-        if self.hasInputTypes:
-            for inputType in self.inputTypes:
-                output = output + "{0} * @param {1}\n".format(indents, inputType)
-        if self.hasReturnType:
-            output = output + "{0} * @return \n".format(indents)
-        output = output + indents + " */\n" + indents
-        #self.returnType = ""
-        self.charactersAdded = len(output)
-        return output
+    def createMethodJavadoc(self):
+        if self.doNotGenerate:
+            self.doNotGenerate = False
+            return ''
+        else: 
+            indents = " " * 4 * self.indentationLevel
+            #output = indents + "/**" + "\n"
+            output = "/**" + "\n"
+            output = output + (indents + " *" + "\n")*2
+            #output = output + indents + " *" + "\n"
+            if self.hasInputTypes:
+                for inputType in self.inputTypes:
+                    output = output + "{0} * @param {1}\n".format(indents, inputType)
+            if self.hasReturnType:
+                output = output + "{0} * @return \n".format(indents)
+            output = output + indents + " */\n" + indents
+            #self.returnType = ""
+            self.charactersAdded = len(output)
+            return output
     
+    def createClassJavadoc(self):
+        output = """/**\n *\n * @author\n * @version\n */\n"""
+        return output
+
     #called in the constructor to fill object with javadoc relevant variables 
     def parseMethodSignature(self, sig):
         print sig
         inputListOriginal = sig[ sig.index("(")+1 : sig.index(")")].split(",")
         wordsBeforeInputList = sig[ : sig.index("(")].split(" ")
+        if "main" in wordsBeforeInputList:
+            self.doNotGenerate = True
+            return
+        self.doNotGenerate = False
         print wordsBeforeInputList
         #if we have inputs, find them
         if inputListOriginal[0] != '':
@@ -61,13 +79,24 @@ class JavadocCommand(sublime_plugin.TextCommand):
         indent_level = len(self.view.substr(indent_region))/4
         return indent_level
 
+    def alreadyCommented(self,region):
+        (row,col)= self.view.rowcol(region.begin())
+        previous_line = self.view.line(self.view.text_point(row-1,0))
+        print self.view.substr(previous_line)
+        if "*/" in self.view.substr(previous_line):
+            return True
+        else:
+            return False
+
+
     def run(self, edit):
         #check if it's a java file
         #fileName = self.view.file_name()[-4:]
         classSignature = self.view.find("""(public|private|protected) (abstract )?(class|interface|enum)""",0)
-        indentation_level = self.determineIndentation(classSignature)
+        #indentation_level = self.determineIndentation(classSignature)
         #maybe do this better?
-        self.view.insert(edit,classSignature.begin(), """/**\n *\n * @author\n * @version\n */\n""")
+        javadocer = Javadoc()
+        self.view.insert(edit,classSignature.begin(), javadocer.createClassJavadoc())
         startSearchPoint = 0
         foundPublicsCount = self.view.find_all("public.*\\)")
         #use the [region] as a counter of how many comments we're inserting
@@ -79,7 +108,8 @@ class JavadocCommand(sublime_plugin.TextCommand):
             methodSignatureString = self.view.substr(methodSignature)
             indentation_level = self.determineIndentation(methodSignature)
             javadocer = Javadoc(indentation_level, methodSignatureString)
-            self.view.insert(edit,methodSignature.begin(),javadocer.createJavadocString())
+            if not self.alreadyCommented(methodSignature):
+                self.view.insert(edit,methodSignature.begin(),javadocer.createMethodJavadoc())
             startSearchPoint = methodSignature.end()+javadocer.charactersAdded
             
 
