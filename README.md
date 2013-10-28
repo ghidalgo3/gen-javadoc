@@ -7,7 +7,7 @@ Adds a button in Edit > Comment.
 Still very beta, use at your own risk....
 
 <h2>Installation</h2>
-Download the JavadocGenerator.py and Main.sublime-menu files.
+Download the python files and the Main.sublime-menu file.
 Save them to your User package in Sublime Text.
 The user package can be opened in Sublime Text by going to Preferences > Browse Packages....
 
